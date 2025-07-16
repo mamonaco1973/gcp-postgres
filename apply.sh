@@ -1,3 +1,4 @@
+
 #!/bin/bash
 #-------------------------------------------------------------------------------
 # STEP 0: VALIDATE ENVIRONMENT BEFORE EXECUTION
@@ -13,7 +14,7 @@ fi
 # STEP 1:???
 #-------------------------------------------------------------------------------
 
-cd 01-infrastructure
+cd 01-postgres
 terraform init
 terraform apply -auto-approve
 cd ..
