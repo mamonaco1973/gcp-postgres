@@ -29,7 +29,7 @@ resource "google_compute_instance" "pgweb_vm" {
 
   # Service Account Configuration
   service_account {
-    email  = local.credentials.client_email          
+    email  = local.credentials.client_email
     scopes = ["cloud-platform"] # Grants access to all Google Cloud APIs.
   }
 

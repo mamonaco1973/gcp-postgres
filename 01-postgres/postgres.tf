@@ -32,9 +32,9 @@ resource "google_sql_user" "postgres_user" {
 }
 
 resource "google_dns_managed_zone" "private_dns" {
-  name        = "internal-db-zone"
-  dns_name    = "internal.db-zone.local."  # MUST end in dot
-  visibility  = "private"
+  name       = "internal-db-zone"
+  dns_name   = "internal.db-zone.local." # MUST end in dot
+  visibility = "private"
 
   private_visibility_config {
     networks {
@@ -47,7 +47,7 @@ resource "google_dns_managed_zone" "private_dns" {
 
 
 resource "google_dns_record_set" "postgres_dns" {
-  name         = "postgres.internal.db-zone.local."  # MUST end in dot
+  name         = "postgres.internal.db-zone.local." # MUST end in dot
   type         = "A"
   ttl          = 300
   managed_zone = google_dns_managed_zone.private_dns.name
