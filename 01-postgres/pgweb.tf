@@ -20,7 +20,7 @@ resource "google_compute_instance" "pgweb_vm" {
 
   metadata_startup_script = templatefile("./scripts/pgweb.sh.template", {
     PGPASSWORD = random_password.postgres.result,
-    PGENDPOINT = "localhost"
+    PGENDPOINT = google_sql_database_instance.postgres.private_ip_address
   })
 
 
