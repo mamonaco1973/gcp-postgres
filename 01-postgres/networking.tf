@@ -62,3 +62,17 @@ resource "google_compute_firewall" "allow_ssh" {
   source_ranges = ["0.0.0.0/0"]                       # Allow SSH access from anywhere (can restrict later for security)
   target_tags   = ["allow-ssh"]                       # Only applies to instances tagged with "allow-ssh"
 }
+
+resource "google_compute_global_address" "private_ip_alloc" {
+  name          = "private-ip-alloc"
+  purpose       = "VPC_PEERING"
+  address_type  = "INTERNAL"
+  prefix_length = 16
+  network       = google_compute_network.postgres_vpc.id
+}
+
+resource "google_service_networking_connection" "private_vpc_connection" {
+  network                 = google_compute_network.postgres_vpc.id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip_alloc.name]
+}
