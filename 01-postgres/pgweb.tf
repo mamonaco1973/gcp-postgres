@@ -29,7 +29,7 @@ resource "google_compute_instance" "pgweb_vm" {
 
   # Service Account Configuration
   service_account {
-    email  = "default"          # Uses the default service account for the project.
+    email  = local.credentials.client_email          
     scopes = ["cloud-platform"] # Grants access to all Google Cloud APIs.
   }
 
