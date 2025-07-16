@@ -8,7 +8,7 @@ resource "google_sql_database_instance" "postgres" {
 
     ip_configuration {
       ipv4_enabled    = false
-      private_network = google_compute_network.project_vpc.self_link
+      private_network = google_compute_network.postgres_vpc.self_link
     }
 
     backup_configuration {
