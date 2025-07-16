@@ -15,6 +15,7 @@ resource "google_compute_instance" "pgweb_vm" {
   network_interface {
     network    = google_compute_network.postgres_vpc.id
     subnetwork = google_compute_subnetwork.postgres_subnet.id
+    access_config {}
   }
 
   metadata_startup_script = templatefile("./scripts/pgweb.sh.template", {
