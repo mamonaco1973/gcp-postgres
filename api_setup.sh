@@ -31,5 +31,6 @@ gcloud services enable pubsub.googleapis.com
 gcloud services enable cloudbuild.googleapis.com
 gcloud services enable iam.googleapis.com
 gcloud services enable sqladmin.googleapis.com
+gcloud services enable servicenetworking.googleapis.com 
 
 gcloud firestore databases create --location=us-central1 --type=firestore-native > /dev/null 2> /dev/null
