@@ -15,8 +15,8 @@ apt install -y postgresql-client unzip  # Install PostgreSQL CLI and unzip tool 
 # CLONE GITHUB REPO CONTAINING PAGILA SQL FILES
 # -----------------------------------------------
 cd /tmp                               # Work in a temporary directory
-git clone https://github.com/mamonaco1973/azure-postgres.git  # Clone repository with SQL data
-cd azure-postgres/01-postgres/data    # Navigate to folder containing pagila SQL scripts
+git clone https://github.com/mamonaco1973/gcp-postgres.git  # Clone repository with SQL data
+cd gcp-postgres/01-postgres/data      # Navigate to folder containing pagila SQL scripts
 
 # -------------------------
 # SET ENV VARS FOR DATABASE
@@ -27,13 +27,11 @@ export PGENDPOINT="${PGENDPOINT}"
 # -----------------------
 # LOAD PAGILA INTO PGSQL
 # -----------------------
-# 1. Create 'pagila' database schema in default 'postgres' DB
-PGPASSWORD=$PGPASSWORD psql -h $PGENDPOINT -U postgres -d postgres -f pagila-db.sql > /tmp/db_load.log
 
-# 2. Load schema into the new 'pagila' database
+# 1. Load schema into the new 'pagila' database
 PGPASSWORD=$PGPASSWORD psql -h $PGENDPOINT -U postgres -d pagila -f pagila-schema.sql >> /tmp/db_load.log
 
-# 3. Load data into the 'pagila' database
+# 2. Load data into the 'pagila' database
 PGPASSWORD=$PGPASSWORD psql -h $PGENDPOINT -U postgres -d pagila -f pagila-data.sql >> /tmp/db_load.log
 
 # -----------------------------

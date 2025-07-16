@@ -1,8 +1,9 @@
-
 #!/bin/bash
-#-------------------------------------------------------------------------------
-# STEP 0: VALIDATE ENVIRONMENT BEFORE EXECUTION
-#-------------------------------------------------------------------------------
+
+# =================================================================================
+# VALIDATE ENVIRONMENT
+# - Ensures prerequisites are in place before proceeding
+# =================================================================================
 
 ./check_env.sh
 if [ $? -ne 0 ]; then
@@ -10,21 +11,12 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-#-------------------------------------------------------------------------------
-# STEP 1:???
-#-------------------------------------------------------------------------------
+# =================================================================================
+# DEPLOY POSTGRESQL INFRASTRUCTURE
+# - Initializes and applies Terraform configuration for Cloud SQL
+# =================================================================================
 
-cd 01-postgres
+cd 01-postgres || { echo "ERROR: Directory '01-postgres' not found."; exit 1; }
 terraform init
 terraform apply -auto-approve
 cd ..
-
-#-------------------------------------------------------------------------------
-# STEP 2: EXTRACT PROJECT AND AUTHENTICATE TO GCP
-#-------------------------------------------------------------------------------
-
-project_id=$(jq -r '.project_id' "./credentials.json")
-gcloud auth activate-service-account --key-file="./credentials.json" > /dev/null 2> /dev/null
-export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/credentials.json"
-
-
