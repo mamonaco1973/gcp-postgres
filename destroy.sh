@@ -17,18 +17,7 @@ fi
 # - Partial destroy first (user + instance), then full cleanup
 # =================================================================================
 
-cd 01-postgres || { echo "ERROR: Directory '01-postgres' not found."; exit 1; }
-
-#echo "STEP 1: Destroy Cloud SQL user and instance..."
-#terraform destroy \
-#  -target=google_sql_user.postgres_user \
-#  -target=google_sql_database_instance.postgres \
-#  -auto-approve
-
-#echo "STEP 2: Wait 15 minutes for backend cleanup (Cloud SQL teardown takes time)..."
-#sleep 900  # 900 seconds = 15 minutes
-
-echo "STEP 3: Destroy remaining infrastructure..."
+cd 01-postgres
+terraform init
 terraform destroy -auto-approve
-
 cd ..
