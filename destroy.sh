@@ -17,6 +17,8 @@ fi
 # - Partial destroy first (user + instance), then full cleanup
 # =================================================================================
 
+gcloud sql instances delete postgres-instance --quiet
+
 cd 01-postgres
 terraform init
 terraform destroy -auto-approve
