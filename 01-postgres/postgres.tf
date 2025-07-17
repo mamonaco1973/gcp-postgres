@@ -102,8 +102,4 @@ resource "google_sql_database" "pagila" {
   instance  = google_sql_database_instance.postgres.name # Attach to the previously created Cloud SQL instance
   charset   = "UTF8"                                     # Character encoding (standard for modern applications)
   collation = "en_US.UTF8"                               # Sorting/locale rules — U.S. English with UTF8 encoding
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
