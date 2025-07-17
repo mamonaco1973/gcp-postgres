@@ -28,10 +28,13 @@ export PGENDPOINT="${PGENDPOINT}"
 # LOAD PAGILA INTO PGSQL
 # -----------------------
 
-# 1. Load schema into the new 'pagila' database
+# 1. Create 'pagila' database schema in default 'postgres' DB
+PGPASSWORD=$PGPASSWORD psql -h $PGENDPOINT -U postgres -d postgres -f pagila-db.sql > /tmp/db_load.log
+
+# 2. Load schema into the new 'pagila' database
 PGPASSWORD=$PGPASSWORD psql -h $PGENDPOINT -U postgres -d pagila -f pagila-schema.sql >> /tmp/db_load.log
 
-# 2. Load data into the 'pagila' database
+# 3. Load data into the 'pagila' database
 PGPASSWORD=$PGPASSWORD psql -h $PGENDPOINT -U postgres -d pagila -f pagila-data.sql >> /tmp/db_load.log
 
 # -----------------------------

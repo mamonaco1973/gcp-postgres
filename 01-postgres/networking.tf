@@ -77,6 +77,8 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   network                 = google_compute_network.postgres_vpc.id                # Custom VPC
   service                 = "servicenetworking.googleapis.com"                    # Required GCP service
   reserved_peering_ranges = [google_compute_global_address.private_ip_alloc.name] # Use previously created IP range
- provider = google-beta
+  
+  # See https://github.com/hashicorp/terraform-provider-google/issues/16275 to explain this workaround
+  provider = google-beta
 }
 

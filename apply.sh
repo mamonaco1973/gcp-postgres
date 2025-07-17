@@ -20,3 +20,10 @@ cd 01-postgres || { echo "ERROR: Directory '01-postgres' not found."; exit 1; }
 terraform init
 terraform apply -auto-approve
 cd ..
+
+# =================================================================================
+# VALIDATE THE BUILD
+# =================================================================================
+
+echo ""
+./validate.sh

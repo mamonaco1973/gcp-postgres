@@ -90,16 +90,3 @@ resource "null_resource" "wait_for_vpc_peering" {
     command = "echo 'NOTE: Waiting for VPC peering to fully propagate...' && sleep 120" # Delay to allow DNS + networking to catch up
   }
 }
-
-# =================================================================================
-# CLOUD SQL DATABASE: PAGILA
-# - Creates a new logical database named "pagila" inside the managed PostgreSQL instance
-# - This is where application data will reside (separate from built-in system databases)
-# - Charset and collation are explicitly set for predictable encoding and sorting behavior
-# =================================================================================
-resource "google_sql_database" "pagila" {
-  name      = "pagila"                                   # Logical database name (used by app and clients)
-  instance  = google_sql_database_instance.postgres.name # Attach to the previously created Cloud SQL instance
-  charset   = "UTF8"                                     # Character encoding (standard for modern applications)
-  collation = "en_US.UTF8"                               # Sorting/locale rules — U.S. English with UTF8 encoding
-}
