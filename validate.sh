@@ -10,7 +10,7 @@ PGWEB_IP=$(gcloud compute instances describe pgweb-vm \
 
 echo "NOTE: pgweb running at http://$PGWEB_IP"
 
-PG_DNS="postgres.internal.db-zone.local
+PG_DNS="postgres.internal.db-zone.local"
 echo "NOTE: Hostname for postgres server is \"$PG_DNS\""
 
 #-------------------------------------------------------------------------------
