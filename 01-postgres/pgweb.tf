@@ -6,7 +6,7 @@
 # =================================================================================
 resource "google_compute_instance" "pgweb_vm" {
   name         = "pgweb-vm"      # Name of the VM instance
-  machine_type = "e2-micro"      # Low-cost instance type suitable for small workloads
+  machine_type = "e2-small"      # Low-cost instance type suitable for small workloads
   zone         = "us-central1-a" # Geographic zone for deployment (must match subnet region)
 
   # =================================================================================
