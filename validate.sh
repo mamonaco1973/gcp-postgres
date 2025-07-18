@@ -17,7 +17,7 @@ echo "NOTE: Waiting for pgweb to become available at http://$PGWEB_IP ..."
 MAX_ATTEMPTS=30
 ATTEMPT=1
 
-until curl -s --head --fail "http://$PGWEB_IP" > /dev/null; do
+until curl -s --fail "http://$PGWEB_IP" > /dev/null; do
   if [ "$ATTEMPT" -ge "$MAX_ATTEMPTS" ]; then
     echo "ERROR: pgweb did not become available after $MAX_ATTEMPTS attempts."
     exit 1
