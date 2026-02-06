@@ -1,78 +1,113 @@
-# =================================================================================
-# COMPUTE INSTANCE: PGWEB VM (Ubuntu 24.04)
-# - Deploys a lightweight Ubuntu VM to host pgweb or similar admin tools
-# - Configured for public access via HTTP and SSH
-# - Includes startup script to inject DB credentials and endpoint
-# =================================================================================
+# ===============================================================================
+# FILE: pgweb.tf
+# ===============================================================================
+# Deploys a lightweight VM for PostgreSQL administration using pgweb.
+#
+# This module:
+#   - Provisions an Ubuntu 24.04 VM in the PostgreSQL VPC
+#   - Assigns a public IP for browser access and SSH administration
+#   - Injects database connection details via a startup script template
+#   - Applies firewall tags to allow HTTP and SSH access
+#   - Attaches a service account for controlled API access
+#
+# NOTES:
+#   - This VM is publicly reachable; restrict firewall source ranges in production
+#   - cloud-platform scope is broad and intended for simplicity
+# ===============================================================================
+
+
+# ===============================================================================
+# COMPUTE INSTANCE: PGWEB VM (UBUNTU 24.04)
+# ===============================================================================
+# - Hosts pgweb or similar PostgreSQL admin tooling
+# - Startup script configures connectivity to the private Cloud SQL instance
+# ===============================================================================
 resource "google_compute_instance" "pgweb_vm" {
   name         = "pgweb-vm"      # Name of the VM instance
-  machine_type = "e2-small"      # Low-cost instance type suitable for small workloads
-  zone         = "us-central1-a" # Geographic zone for deployment (must match subnet region)
+  machine_type = "e2-small"      # Cost-effective instance type for admin workloads
+  zone         = "us-central1-a" # Zone must align with subnet region
 
-  # =================================================================================
+
+  # =============================================================================
   # BOOT DISK CONFIGURATION
-  # - Uses latest Ubuntu 24.04 image
-  # - Automatically initializes the boot disk from the specified image
-  # =================================================================================
+  # =============================================================================
+  # - Boots from the latest Ubuntu 24.04 LTS image
+  # - Image is resolved dynamically via a data source
+  # =============================================================================
   boot_disk {
     initialize_params {
-      image = data.google_compute_image.ubuntu_latest.self_link # Reference to latest Ubuntu image (see data block below)
+      image = data.google_compute_image.ubuntu_latest.self_link
     }
   }
 
-  # =================================================================================
+
+  # =============================================================================
   # NETWORK INTERFACE CONFIGURATION
-  # - Attaches instance to custom VPC and subnet
-  # - Adds external IP via `access_config {}` for internet access
-  # =================================================================================
+  # =============================================================================
+  # - Attaches instance to the custom PostgreSQL VPC and subnet
+  # - access_config enables an external IP for public connectivity
+  # =============================================================================
   network_interface {
-    network    = google_compute_network.postgres_vpc.id       # Connect to custom VPC
-    subnetwork = google_compute_subnetwork.postgres_subnet.id # Attach to defined subnet
-    access_config {}                                          # Enable public IP address
+    network    = google_compute_network.postgres_vpc.id
+    subnetwork = google_compute_subnetwork.postgres_subnet.id
+    access_config {}
   }
 
-  # =================================================================================
+
+  # =============================================================================
   # STARTUP SCRIPT INJECTION
-  # - Loads external script template (e.g., ./scripts/pgweb.sh.template)
-  # - Replaces variables with actual values (Postgres password and endpoint)
-  # =================================================================================
+  # =============================================================================
+  # - Renders a local pgweb startup script template
+  # - Injects PostgreSQL credentials and endpoint at boot time
+  # =============================================================================
   metadata_startup_script = templatefile("./scripts/pgweb.sh.template", {
-    PGPASSWORD = random_password.postgres.result,  # Inject generated password
-    PGENDPOINT = "postgres.internal.db-zone.local" # Placeholder: private DNS name of the DB
+    PGPASSWORD = random_password.postgres.result
+    PGENDPOINT = "postgres.internal.db-zone.local"
   })
 
-  # =================================================================================
-  # FIREWALL TAGS
-  # - Enables association with firewall rules defined elsewhere (e.g., allow-ssh, allow-http)
-  # - These tags are matched by `target_tags` in `google_compute_firewall` resources
-  # =================================================================================
-  tags = ["allow-ssh", "allow-http"]
 
-  # =================================================================================
+  # =============================================================================
+  # FIREWALL TAGS
+  # =============================================================================
+  # - Tags must match firewall rule target_tags to allow SSH and HTTP
+  # =============================================================================
+  tags = [
+    "allow-ssh",
+    "allow-http"
+  ]
+
+
+  # =============================================================================
   # SERVICE ACCOUNT CONFIGURATION
-  # - Attaches a service account to the VM for secure API access
-  # - Uses client_email from parsed credentials file
-  # - Scope: full access to all GCP APIs (cloud-platform)
-  # =================================================================================
+  # =============================================================================
+  # - Attaches a service account identity for Google API access
+  # - Uses the client_email parsed from credentials.json
+  # =============================================================================
   service_account {
-    email  = local.credentials.client_email # Reuse parsed email from credentials JSON
-    scopes = ["cloud-platform"]             # Broad access — tighten for production use
+    email  = local.credentials.client_email
+    scopes = ["cloud-platform"]
   }
 
-  # =================================================================================
+
+  # =============================================================================
   # DEPENDENCY MANAGEMENT
-  # - Forces VM creation to wait for Cloud SQL instance to be ready
-  # - Ensures startup script has a valid endpoint to connect to
-  # =================================================================================
-  depends_on = [google_sql_database_instance.postgres]
+  # =============================================================================
+  # - Ensures the PostgreSQL Cloud SQL instance exists before VM startup
+  # - Prevents startup script failures due to missing database endpoint
+  # =============================================================================
+  depends_on = [
+    google_sql_database_instance.postgres
+  ]
 }
 
-# =================================================================================
-# DATA SOURCE: UBUNTU LTS IMAGE
-# - Dynamically fetches latest Ubuntu 24.04 LTS image
-# - Ensures instance always boots from a stable and secure base image
-# =================================================================================
+
+# ===============================================================================
+# DATA SOURCE: UBUNTU 24.04 LTS IMAGE
+# ===============================================================================
+# - Resolves the latest Ubuntu 24.04 LTS image from the official project
+# - Using the family ensures security patches are picked up automatically
+# ===============================================================================
 data "google_compute_image" "ubuntu_latest" {
-  family  = "ubuntu-2404-lts-amd64" # Image family ensures latest patch version is always used
-  project = "ubuntu-os-cloud"       # Official Ubuntu image repository on GCP
+  family  = "ubuntu-2404-lts-amd64"
+  project = "ubuntu-os-cloud"
 }
