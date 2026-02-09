@@ -49,7 +49,7 @@ resource "google_compute_subnetwork" "postgres_subnet" {
 # - Applies across VM instances inside the VPC
 # ===============================================================================
 resource "google_compute_firewall" "allow_http" {
-  name    = "allow-http"                           # Rule name
+  name    = "postgres-allow-http"                  # Rule name
   network = google_compute_network.postgres_vpc.id # Attach to VPC
 
   allow {
@@ -58,6 +58,7 @@ resource "google_compute_firewall" "allow_http" {
   }
 
   source_ranges = ["0.0.0.0/0"] # Allow from all IPs (tighten for production)
+  target_tags   = ["postgres-allow-http"]
 }
 
 
@@ -68,7 +69,7 @@ resource "google_compute_firewall" "allow_http" {
 # - Uses tags to scope the rule to instances that require SSH access
 # ===============================================================================
 resource "google_compute_firewall" "allow_ssh" {
-  name    = "allow-ssh"                            # Rule name
+  name    = "postgres-allow-ssh"                            # Rule name
   network = google_compute_network.postgres_vpc.id # Attach to VPC
 
   allow {
@@ -77,7 +78,7 @@ resource "google_compute_firewall" "allow_ssh" {
   }
 
   source_ranges = ["0.0.0.0/0"] # Open access (restrict to admin IPs for production)
-  target_tags   = ["allow-ssh"] # Scope to VMs that require SSH access
+  target_tags   = ["postgres-allow-ssh"]
 }
 
 

@@ -72,8 +72,8 @@ resource "google_compute_instance" "pgweb_vm" {
   # - Tags must match firewall rule target_tags to allow SSH and HTTP
   # =============================================================================
   tags = [
-    "allow-ssh",
-    "allow-http"
+    "postgres-allow-ssh",
+    "postgres-allow-http"
   ]
 
 
