@@ -25,7 +25,7 @@
 # ===============================================================================
 resource "google_sql_database_instance" "postgres" {
   name             = "postgres-instance" # Name of the Cloud SQL instance
-  database_version = "POSTGRES_15"       # PostgreSQL engine version
+  database_version = "POSTGRES_18"       # PostgreSQL engine version
   region           = "us-central1"       # Region for compute + networking consistency
 
   settings {
