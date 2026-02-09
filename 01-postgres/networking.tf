@@ -88,7 +88,7 @@ resource "google_compute_firewall" "allow_ssh" {
 # - Required for Cloud SQL private IP via VPC peering to Google managed services
 # ===============================================================================
 resource "google_compute_global_address" "private_ip_alloc" {
-  name          = "private-ip-alloc"                     # Unique name for the IP range
+  name          = "postgres-private-ip-alloc"            # Unique name for the IP range
   purpose       = "VPC_PEERING"                          # Must be VPC_PEERING for Service Networking
   address_type  = "INTERNAL"                             # Internal IP block, not external
   prefix_length = 16                                     # /16 = 65536 IPs (adjust to fit use)
