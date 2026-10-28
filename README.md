@@ -1,128 +1,156 @@
-# Deploying PostgreSQL on Google Cloud Platform (GCP)
+# PostgreSQL on GCP: Cloud SQL for PostgreSQL with pgweb
 
-This project demonstrates how to deploy a secure, private PostgreSQL instance on Google Cloud using Terraform.
+A private **Cloud SQL for PostgreSQL** instance, built with Terraform and
+loaded with the
+[Pagila](https://www.postgresql.org/ftp/projects/pgFoundry/dbsamples/pagila/)
+sample database. The instance has no public IP; a **pgweb** VM with a public
+IP gives you a browser client for it.
 
-The deployment includes a Cloud SQL for PostgreSQL instance with public access disabled, integrated into a custom Virtual Private Cloud (VPC) and secured using private IP networking. Additionally, the project provisions a lightweight Ubuntu virtual machine that runs [pgweb](https://github.com/sosedoff/pgweb), a browser-based PostgreSQL client, allowing private, browser-accessible interaction with the database.
+![pgweb](pgweb.png)
 
-As part of the configuration, we deploy the [Pagila](https://www.postgresql.org/ftp/projects/pgFoundry/dbsamples/pagila/) sample dataset—a fictional DVD rental database—to showcase real-world querying and administration in a private cloud context. The solution is ideal for developers and teams looking to build secure, internal-facing applications without exposing the database to the public internet.
+| Piece | Where | Role |
+|---|---|---|
+| **Cloud SQL for PostgreSQL** | private IP, peered to `postgres-vpc` | `postgres-instance`, PostgreSQL 18, `db-f1-micro`, automated backups, Sunday 03:00 maintenance window; no public IP |
+| **Private service access** | `postgres-vpc` | a reserved /16 range peered to Google's service network, which is where the instance's private IP comes from |
+| **Cloud DNS private zone** | visible to `postgres-vpc` | `internal.db-zone.local`, with `postgres.internal.db-zone.local` pointing at the instance |
+| **pgweb-vm** | `postgres-subnet`, public IP | Ubuntu 24.04, `e2-small`, `us-central1-a`; loads Pagila, then serves pgweb 0.11.12 on port 80 |
+| **Secret Manager** | global | `postgres-credentials`: the `postgres` user and password |
 
-![diagram](gcp-postgres.png)
+## Architecture
 
-## What You'll Learn
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="architecture-dark.svg">
+  <img alt="A browser reaches pgweb-vm, an Ubuntu 24.04 VM with a public IP, over HTTP. At boot the VM clones this repository for the Pagila scripts and downloads pgweb from GitHub, loads Pagila into Cloud SQL for PostgreSQL and serves pgweb, which connects on port 5432. The instance has no public IP: it is reached over VPC peering on a private address, and a private Cloud DNS zone gives that address a name. The password is in Secret Manager." src="architecture-light.svg">
+</picture>
 
-- How to deploy a fully private PostgreSQL Cloud SQL instance on GCP using Terraform
-- How to configure a custom VPC, subnet, and private IP for secure, internal connectivity
-- How to provision a VM running `pgweb` for private browser-based database access
-- Best practices for securing GCP-managed databases with private networking and infrastructure-as-code
+Regenerate with `python3 make_diagram.py`.
+
+- **`01-postgres/`** is the whole stack: the VPC (`postgres-vpc`) with
+  `postgres-subnet` (10.0.0.0/24), the firewall rules, the private service
+  access range and peering, the Cloud SQL instance and its `postgres` user,
+  the private DNS zone, the secret, and the pgweb VM.
+- **`01-postgres/data/`** holds the Pagila load scripts (`pagila-db.sql`,
+  `pagila-schema.sql`, `pagila-data.sql`) and the sample queries.
+
+## How it boots
+
+1. Terraform builds the VPC and the private service access peering, then
+   waits 5 minutes for the peering to propagate before creating the Cloud SQL
+   instance. It generates a 24-character password for the `postgres` user.
+2. The VM's startup script installs the PostgreSQL client, clones this
+   repository, and loads Pagila into `postgres.internal.db-zone.local` with
+   `psql`. Output is in `/tmp/db_load.log`.
+3. It downloads pgweb 0.11.12 from GitHub and runs it as a systemd service on
+   port 80. pgweb starts without a connection; you enter one when you open it.
+
+## Firewall rules
+
+```
+internet ─80, 22─▶ pgweb-vm ─5432─▶ Cloud SQL (peered private IP)
+```
+
+| Rule | Port | Applies to |
+|---|---|---|
+| `postgres-allow-http` | tcp 80 | pgweb-vm |
+| `postgres-allow-ssh` | tcp 22 | pgweb-vm |
+
+Both allow `0.0.0.0/0`. The Cloud SQL instance has no public IP, so it can
+only be reached from inside the VPC.
 
 ## Prerequisites
 
 * [A Google Cloud Account](https://console.cloud.google.com/)
-* [Install gcloud CLI](https://cloud.google.com/sdk/docs/install) 
-* [Install Latest Terraform](https://developer.hashicorp.com/terraform/install)
+* [Install gcloud CLI](https://cloud.google.com/sdk/docs/install)
+* [Install Terraform](https://developer.hashicorp.com/terraform/install)
+* [Install jq](https://jqlang.github.io/jq/download/)
 
-If this is your first time watching our content, we recommend starting with this video: [GCP + Terraform: Easy Setup](https://youtu.be/3spJpYX4f7I). It provides a step-by-step guide to properly configure Terraform, Packer, and the gcloud CLI.
+Put a service account key in the repository root as `credentials.json`.
+Terraform uses it, and `check_env.sh` activates it and runs `api_setup.sh`,
+which enables the Cloud SQL Admin, Service Networking, Compute and other APIs
+the build needs. If this is your first time watching our content, we
+recommend starting with this video:
+[GCP + Terraform: Easy Setup](https://youtu.be/3spJpYX4f7I).
 
-## Download this Repository
+## Deploy
 
 ```bash
 git clone https://github.com/mamonaco1973/gcp-postgres.git
 cd gcp-postgres
+./apply.sh       # one phase: VPC, peering, Cloud SQL, DNS, secret, pgweb VM
 ```
 
-## Build the Code
+Everything deploys to `us-central1`. `apply.sh` ends by running
+`validate.sh`, which waits for pgweb to answer (up to 15 minutes) and prints:
 
-Run [check_env.sh](check_env.sh) then run [apply.sh](apply.sh).
+```
+===============================================================================
+BUILD RESULTS
+===============================================================================
+pgweb URL             : http://203.0.113.10
+Postgres Hostname DNS : postgres.internal.db-zone.local
+===============================================================================
+```
+
+## Try it
+
+1. Get the password from Secret Manager:
+
+   ```bash
+   gcloud secrets versions access latest --secret=postgres-credentials \
+     | jq -r .password
+   ```
+
+2. Open the pgweb URL and connect with host
+   `postgres.internal.db-zone.local`, user `postgres`, that password, and
+   database `pagila`.
+3. Run the sample queries from the **Query** tab (`01-postgres/data/`):
+
+   ```sql
+   SELECT
+       f.title AS film_title,
+       a.first_name || ' ' || a.last_name AS actor_name
+   FROM film f
+   JOIN film_actor fa ON f.film_id = fa.film_id
+   JOIN actor a ON fa.actor_id = a.actor_id
+   ORDER BY f.title, actor_name
+   LIMIT 20;
+   ```
+
+   ```sql
+   SELECT
+       f.title,
+       STRING_AGG(a.first_name || ' ' || a.last_name, ', ') AS actor_names
+   FROM film f
+   JOIN film_actor fa ON f.film_id = fa.film_id
+   JOIN actor a ON fa.actor_id = a.actor_id
+   GROUP BY f.title
+   ORDER BY f.title
+   LIMIT 10;
+   ```
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `validate.sh` keeps retrying | The VM is still installing. `gcloud compute ssh pgweb-vm --zone us-central1-a`, then `sudo journalctl -u google-startup-scripts`. |
+| `pagila` is missing | Read `/tmp/db_load.log` on the VM for the `psql` output. |
+| pgweb can't reach the server | `nslookup postgres.internal.db-zone.local` on the VM should return the instance's private IP. |
+| You want a local client | The instance is private. Connect from the VM (`psql -h postgres.internal.db-zone.local -U postgres -d pagila`). |
+
+## Teardown
 
 ```bash
-~/gcp-postgres$ ./apply.sh
-NOTE: Validating that required commands are found in the PATH.
-NOTE: gcloud is found in the current PATH.
-NOTE: packer is found in the current PATH.
-NOTE: terraform is found in the current PATH.
-NOTE: jq is found in the current PATH.
-NOTE: All required commands are available.
-NOTE: Validating credentials.json and test the gcloud command
-Activated service account credentials for: [terraform-build@debug-project-446221.iam.gserviceaccount.com]
-Initializing the backend...
-Initializing provider plugins...
-- Reusing previous version of hashicorp/random from the dependency lock file
-- Reusing previous version of hashicorp/google from the dependency lock file
-- Reusing previous version of hashicorp/google-beta from the dependency lock file
-- Reusing previous version of hashicorp/null from the dependency lock file
-- Using previously-installed hashicorp/google v5.45.2
-- Using previously-installed hashicorp/google-beta v4.85.0
-- Using previously-installed hashicorp/null v3.2.4
-- Using previously-installed hashicorp/random v3.7.2
-
-Terraform has been successfully initialized!
-[...]
+./destroy.sh     # deletes the Cloud SQL instance with gcloud first, then destroys the stack
 ```
 
-## Build Results
+The instance is deleted first so that Terraform can then remove the private
+service access peering.
 
-After applying the Terraform scripts, the following GCP resources will be created:
+## Notes
 
-### VPC & Subnet
-- VPC: `postgres-vpc`
-  - CIDR range: `10.0.0.0/23`
-- Subnet: `postgres-subnet`
-  - Region-based subnet (e.g., `us-central1`)
-  - CIDR: `10.0.0.0/25`
-- Firewall Rules:
-  - Allow internal traffic
-  - Allow HTTP and SSH access to the `pgweb` VM
-
-### Private Networking
-- Private Service Connection:
-  - Enables private IP for Cloud SQL
-  - Ensures all communication stays within the VPC
-
-### Cloud SQL for PostgreSQL
-- Database Version: PostgreSQL 15
-- Instance: `postgres-instance`
-  - Private IP only (no public access)
-  - Preloaded with [Pagila sample database](https://www.postgresql.org/ftp/projects/pgFoundry/dbsamples/pagila/)
-  - Credentials injected via Terraform
-
-### Virtual Machine (pgweb)
-- VM Name: `pgweb-vm`
-  - Ubuntu-based instance
-  - Deployed in the same subnet
-  - Uses startup script to install and run `pgweb`
-  - Connects privately to PostgreSQL via internal IP
-
-## pgweb Demo
-
-[pgweb](https://github.com/sosedoff/pgweb/blob/main/README.md) is a simple web-based and cross-platform PostgreSQL database explorer.
-
-![pgweb](pgweb.png)
-
-Query 1:
-```sql
--- Select the film title and full actor name for each film
-SELECT
-    f.title AS film_title,
-    a.first_name || ' ' || a.last_name AS actor_name
-FROM
-    film f
-JOIN film_actor fa ON f.film_id = fa.film_id
-JOIN actor a ON fa.actor_id = a.actor_id
-ORDER BY f.title, actor_name
-LIMIT 20;
-```
-
-Query 2:
-```sql
--- Select film titles and a comma-separated list of all actors in each film
-SELECT
-    f.title,
-    STRING_AGG(a.first_name || ' ' || a.last_name, ', ') AS actor_names
-FROM
-    film f
-JOIN film_actor fa ON f.film_id = fa.film_id
-JOIN actor a ON fa.actor_id = a.actor_id
-GROUP BY f.title
-ORDER BY f.title
-LIMIT 20;
-```
+- **Lab only.** pgweb is open to the internet over plain HTTP with no
+  sign-in of its own and runs as root, SSH is open from anywhere, the
+  database password is in the VM's startup script metadata, and the VM runs
+  as the same service account as Terraform with the `cloud-platform` scope.
+  Restrict the firewall rules and use a narrower VM service account for
+  anything more.
